@@ -1,0 +1,153 @@
+﻿@using Microsoft.AspNetCore.Identity
+@using System.Globalization
+@inject UserManager<IdentityUser> UserManager
+@inject IJsonHelper Json
+@inject SignInManager<IdentityUser> SignInManager
+@model SportsEquipmentRental.Models.Reservation
+
+@{
+    ViewData["Title"] = "Create";
+
+}
+
+<!-- Flatpickr CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+<!-- Flatpickr JS -->
+<script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+
+<h1>Create</h1>
+
+<h4>Reservation</h4>
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="ReservationId" />
+            <div class="form-group">
+                <label>User</label>
+                @if (SignInManager.IsSignedIn(User) && User.IsInRole("Admin"))
+                {
+                    <select asp-for="IdentityUserId" class="form-control" asp-items="ViewBag.IdentityUserId"></select>
+                }
+                else
+                {
+                    <select asp-for="IdentityUserId" class="form-control" asp-items="ViewBag.IdentityUserId"></select>
+                }
+                <span asp-validation-for="IdentityUserId" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label>Equipment</label>
+                <select asp-for="EquipmentId" class="form-control" asp-items="ViewBag.EquipmentId" onchange="updateRentalPrice()"></select>
+                <span asp-validation-for="EquipmentId" class="text-danger"></span>
+            </div>
+
+            <input type="hidden" id="RentalPricePerDay" />
+
+            @* Flatpickr *@
+            <div class="form-group">
+                <label asp-for="StartDate" class="control-label"></label>
+                <input asp-for="StartDate" class="form-control datetime-picker" type="text" onchange="calculateTotalPrice()" />
+                <span asp-validation-for="StartDate" class="text-danger"></span>
+            </div>
+
+            @* Flatpickr *@
+            <div class="form-group">
+                <label asp-for="EndDate" class="control-label"></label>
+                <input asp-for="EndDate" class="form-control datetime-picker" type="text" onchange="calculateTotalPrice()" />
+                <span asp-validation-for="EndDate" class="text-danger"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="TotalPrice" class="control-label"></label>
+                @if (SignInManager.IsSignedIn(User) && User.IsInRole("Admin"))
+                {
+                    <input asp-for="TotalPrice" class="form-control" />
+                }
+                else
+                {
+                    <input asp-for="TotalPrice" class="form-control" readonly />
+                }
+                <span asp-validation-for="TotalPrice" class="text-danger"></span>
+            </div>
+
+            <div class="form-group form-check">
+                
+                @if (SignInManager.IsSignedIn(User) && User.IsInRole("Admin"))
+                {
+                    <label class="form-check-label">
+                        Is Paid
+                        <input class="form-check-input" asp-for="IsPaid"/>
+                    </label>
+                }
+                else
+                {
+                    <span>Is Paid: </span>
+                    <i>false</i>
+                }
+                
+            </div>
+            <div class="form-group">
+                <input type="submit" value="Create" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+</div>
+
+<div>
+    <a asp-action="Index">Back to List</a>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+        var equipmentList = ViewBag.EquipmentList as List<EquipmentViewModel>;
+    }
+    <script>
+        // Ustawienie jQuery Validation na kulturę pl-PL
+        $.validator.methods.number = function (value, element) {
+            return this.optional(element) || /^-?\d+(,\d+)?$/.test(value.replace('.', ','));
+        };
+
+        // Alternatywny Data-time Picker
+        flatpickr(".datetime-picker", {
+            enableTime: true,
+            dateFormat: "d.m.Y H:i", // Ustawienie formatu na dd.MM.yyyy HH:mm
+            time_24hr: true // Wymuszenie 24-godzinnego formatu
+        });
+
+        var equipmentList = @Html.Raw(Json.Serialize(equipmentList));
+
+        function updateRentalPrice() {
+            var equipmentId = document.querySelector('[name="EquipmentId"]').value;
+            var selectedEquipment = equipmentList.find(e => e.equipmentId == equipmentId);
+            if (selectedEquipment) {
+                document.getElementById('RentalPricePerDay').value = selectedEquipment.rentalPricePerDay;
+                calculateTotalPrice();
+            }
+        }
+
+        function calculateTotalPrice() {
+            var equipmentId = document.querySelector('[name="EquipmentId"]').value;
+            var selectedEquipment = equipmentList.find(e => e.equipmentId == equipmentId);
+            if (selectedEquipment) {
+                document.getElementById('RentalPricePerDay').value = selectedEquipment.rentalPricePerDay;
+            }
+
+            var startDate = flatpickr.parseDate(document.querySelector('[name="StartDate"]').value, "d.m.Y H:i");
+            var endDate = flatpickr.parseDate(document.querySelector('[name="EndDate"]').value, "d.m.Y H:i");
+            var rentalPricePerDay = parseFloat(document.getElementById('RentalPricePerDay').value);
+
+            if (startDate && endDate && rentalPricePerDay) {
+                var diffTime = Math.abs(endDate - startDate);
+                var diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); // Difference in days
+                var totalPrice = diffDays * rentalPricePerDay;
+                document.querySelector('[name="TotalPrice"]').value = totalPrice.toLocaleString('@CultureInfo.DefaultThreadCurrentUICulture', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function () {
+            calculateTotalPrice();
+        });
+    </script>
+}
