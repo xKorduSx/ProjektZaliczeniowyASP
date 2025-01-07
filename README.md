@@ -80,4 +80,13 @@ Metoda Login:
 Wymagania systemowe:
 •	Minimalne: System z obsługą platformy .NET 6.0+, SQL Server.
 •	Zalecane: Hosting z obsługą ASP.NET Core i baz danych SQL Server.
+konta
+admin: admin1@example.com
+admin2@example.com
 
+hasło Admin@123
+
+user: user1@example.com
+user2@example.com
+user3@example.com
+haslo: User@123
